@@ -50,4 +50,3 @@ CREATE TABLE IF NOT EXISTS photos (
 -- COPY 5655463
 -- products=# COPY skus FROM '~/hackreactor/data/skus.csv' DELIMITER ',' CSV HEADER;
 -- COPY 11323917
--- products=# COPY skus FROM '~/hackreactor/data/skus.csv' DELIMITER ',' CSV HEADER;
