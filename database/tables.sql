@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS photos (
   thumbnail_url TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS related (
+  id BIGSERIAL PRIMARY KEY,
+  current_id BIGINT REFERENCES product(id) ON DELETE CASCADE,
+  related_id BIGINT REFERENCES product(id) ON DELETE CASCADE
+);
 -- sudo -u postgres psql -a -d products -f tables.sql
 
 
