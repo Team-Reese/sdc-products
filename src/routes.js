@@ -33,6 +33,7 @@ router.get('/products', async(req, res) => {
 
 // /products/:id/ - query product and features table
 router.get('/products/:id', async(req, res) => {
+  console.log('inisde base /:id endpoint');
   // no other params besides id
   let {id} = req.params;
   try {
@@ -55,11 +56,29 @@ router.get('/products/:id', async(req, res) => {
 });
 
 // /products/:id/styles - query styles, photos, and skus table (yikes)
-router.get('products/:id/styles', async (req, res) => {
+router.get('/products/:id/styles', async (req, res) => {
   // no other params besides id
+  // console.log('inside styles endpoint');
   let {id} = req.params;
   try {
     // will probably have to write an aggregate function here
+    let queryStr = `select s.id style_id, s.name, original_price, sale_price, default_style "default?",
+      ( select jsonb_object_agg(id, jsonb_build_object(
+        'quantity', quantity,
+        'size', size
+      )) skus from skus where style_id = s.id),
+      ( select jsonb_agg(jsonb_build_object(
+        'thumbnail_url', thumbnail_url,
+        'url', url
+      )) photos from photos where style_id = s.id)
+    from styles s
+    inner join skus sk on sk.style_id = s.id
+    inner join photos p on p.style_id = s.id
+    where s.product_id = $1
+    group by s.id order by s.id asc`;
+    let {rows} = await db.query(queryStr, [id]);
+    console.log(rows);
+    res.send({'product_id': id, 'results': rows});
   } catch(err) {
     console.log(err.stack);
     throw err;
@@ -69,24 +88,26 @@ router.get('products/:id/styles', async (req, res) => {
 // /products/:id/related - query related table
 router.get('/products/:id/related', async (req, res) => {
   // no other params besides id
+  console.log('inside related endpoint');
   let {id} = req.params;
   let config = (param => ({
     name: 'get_related',
-    text: 'SELECT array_agg (related_id)from related where current_id = $1',
+    text: 'SELECT array_agg(related_id) from related where current_id = $1',
     values: [param],
     rowMode: 'array'
   }))(id);
   try {
-    // let {rows} = await db.query('SELECT related_id from related where current_id = $1', [id]);
-    let {rows} = await db.query(config);
+    let {rows} = await db.query('SELECT array_agg(related_id) ids from related where current_id = $1', [id]);
+    // let {rows} = await db.query(config);
     console.log(rows);
-    res.send(rows[0][0]);
-    // res.send(body);
+    // res.send(rows[0][0]);
+    res.send(rows[0].ids);
   } catch (err) {
     console.log(err.stack);
     throw err;
   }
 });
+
 
 
 module.exports = router;
