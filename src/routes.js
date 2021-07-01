@@ -62,7 +62,7 @@ router.get('/products/:id/styles', async (req, res) => {
   let {id} = req.params;
   try {
     // will probably have to write an aggregate function here
-    let queryStr = `select s.id style_id, s.name, original_price, sale_price, default_style "default?",
+    let queryStr = ` select s.id style_id, s.name, original_price, sale_price, default_style "default?",
       ( select jsonb_object_agg(id, jsonb_build_object(
         'quantity', quantity,
         'size', size
@@ -72,13 +72,34 @@ router.get('/products/:id/styles', async (req, res) => {
         'url', url
       )) photos from photos where style_id = s.id)
     from styles s
-    inner join skus sk on sk.style_id = s.id
-    inner join photos p on p.style_id = s.id
     where s.product_id = $1
     group by s.id order by s.id asc`;
+    let queryStr2 = ` select product_id, json_agg(
+      jsonb_build_object(
+        'style_id', id,
+        'name', name,
+        'original_price', original_price,
+        'sale_price', sale_price,
+        'default?', default_style,
+        'skus', (select jsonb_object_agg(id, jsonb_build_object(
+            'quantity', quantity,
+            'size', size
+          )) skus from skus where style_id = s.id),
+        'photos', (select jsonb_agg(jsonb_build_object(
+            'thumbnail_url', thumbnail_url,
+            'url', url
+          )) photos from photos where style_id = s.id)
+      )
+    ) results from styles s
+    where s.product_id = $1
+    group by s.product_id;`
+
     let {rows} = await db.query(queryStr, [id]);
     console.log(rows);
     res.send({'product_id': id, 'results': rows});
+    /* let {rows} = await db.query(queryStr2, [id]);
+    console.log(rows);
+    res.send(rows[0]); */
   } catch(err) {
     console.log(err.stack);
     throw err;
